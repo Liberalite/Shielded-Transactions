@@ -6,8 +6,11 @@ import "hardhat/console.sol";
 
 interface IWETH {
     function deposit(uint wad) external payable;
+
     function withdraw(uint wad) external;
+
     function balanceOf(address account) external view returns (uint256);
+
     function transfer(address to, uint256 amount) external returns (bool);
 }
 
@@ -15,9 +18,8 @@ error UNCLED_BLOCK();
 error TX_MISMATCH();
 
 contract ProtectedTxRelayer is AccessControl {
-    
     bytes32 public constant EXECUTOR_ROLE = keccak256("EXECUTOR_ROLE");
-    
+
     IWETH WETH;
 
     constructor(address WETH_ADDRESS) payable {
@@ -35,20 +37,28 @@ contract ProtectedTxRelayer is AccessControl {
         bytes32 expectedParentHash,
         uint256 _ethAmountToCoinbase
     ) external payable onlyRole(EXECUTOR_ROLE) {
-        if(_targets.length != _payloads.length) revert TX_MISMATCH();
-        if(blockhash(block.number - 1) != expectedParentHash) revert UNCLED_BLOCK();
+        if (_targets.length != _payloads.length) revert TX_MISMATCH();
+        if (blockhash(block.number - 1) != expectedParentHash)
+            revert UNCLED_BLOCK();
 
         for (uint256 i = 0; i < _targets.length; i++) {
             // (bool success, bytes memory result) = addr.call(abi.encodeWithSignature("myFunction(uint,address)", 10, msg.sender)); // function signature string should not have any spaces
-            (bool _success, bytes memory result) = _targets[i].call(_payloads[i]);
-            require(_success); result;
+            (bool _success, bytes memory result) = _targets[i].call(
+                _payloads[i]
+            );
+            require(_success);
+            result;
             // (bytes memory a) = abi.decode(result, (bytes));
         }
 
         block.coinbase.transfer(_ethAmountToCoinbase);
     }
 
-    function call(address payable _to, uint256 _value, bytes calldata _data) external onlyRole(DEFAULT_ADMIN_ROLE) payable returns (bytes memory) {
+    function call(
+        address payable _to,
+        uint256 _value,
+        bytes calldata _data
+    ) external payable onlyRole(DEFAULT_ADMIN_ROLE) returns (bytes memory) {
         require(_to != address(0));
         (bool _success, bytes memory _result) = _to.call{value: _value}(_data);
         require(_success);
@@ -59,24 +69,43 @@ contract ProtectedTxRelayer is AccessControl {
         payable(to).transfer(address(this).balance);
     }
 
-    function withdrawTOKENS(address payable to, address tokenAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function withdrawTOKEN(address payable to, address tokenAddress)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
         IWETH ERC20Token = IWETH(tokenAddress);
         uint256 amount = ERC20Token.balanceOf(address(this));
         ERC20Token.transfer(to, amount);
     }
 
-    function getBlock() external onlyRole(DEFAULT_ADMIN_ROLE) view returns (
-        bytes32 blockHash,
-        uint256 blockBaseFee,
-        uint256 blockChainId,
-        address blockCoinbase,
-        uint256 blockDifficulty,
-        uint256 blockGasLimit,
-        uint256 blockNumber,
-        uint256 blockTimestamp,
-        uint256 remainingGas,
-        uint256 txGasprice
-    ) {
+    function withdrawTOKENS(address payable to, address[] memory tokenAddress)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        for (uint i = 0; i < tokenAddress.length; i++) {
+            IWETH ERC20Token = IWETH(tokenAddress[i]);
+            uint256 amount = ERC20Token.balanceOf(address(this));
+            ERC20Token.transfer(to, amount);
+        }
+    }
+
+    function getBlock()
+        external
+        view
+        onlyRole(DEFAULT_ADMIN_ROLE)
+        returns (
+            bytes32 blockHash,
+            uint256 blockBaseFee,
+            uint256 blockChainId,
+            address blockCoinbase,
+            uint256 blockDifficulty,
+            uint256 blockGasLimit,
+            uint256 blockNumber,
+            uint256 blockTimestamp,
+            uint256 remainingGas,
+            uint256 txGasprice
+        )
+    {
         return (
             blockhash(block.number - 1),
             block.basefee,
@@ -91,10 +120,59 @@ contract ProtectedTxRelayer is AccessControl {
         );
     }
 
-    function destruct() external onlyRole(DEFAULT_ADMIN_ROLE){
+    function getSelectors() external pure returns (bytes memory) {
+        return abi.encodeWithSelector(this.call.selector); // abi.encodeWithSignature("call()")
+    }
+
+    function destruct() external onlyRole(DEFAULT_ADMIN_ROLE) {
         selfdestruct(payable(msg.sender));
     }
-    
+}
+
+contract MultiCall {
+    function multiCall(address[] calldata _targets, bytes[] calldata _payloads)
+        external
+        view
+        returns (bytes[] memory)
+    {
+        if (_targets.length != _payloads.length) revert TX_MISMATCH();
+        bytes[] memory results = new bytes[](_payloads.length);
+
+        for (uint i; i < _targets.length; i++) {
+            (bool success, bytes memory result) = _targets[i].staticcall(
+                _payloads[i]
+            );
+            if (success) {
+                results[i] = result;
+            }
+        }
+
+        return results;
+    }
+}
+
+contract MultiCallExtended {
+    constructor(address[] memory targets, bytes[] memory args) {
+        uint256 len = targets.length;
+        require(args.length == len, "Error: Array length do not match.");
+
+        bytes[] memory returnDatas = new bytes[](len);
+
+        for (uint256 i = 0; i < len; i++) {
+            address target = targets[i];
+            bytes memory arg = args[i];
+            (bool success, bytes memory returnData) = target.call(arg);
+            if (!success) {
+                returnDatas[i] = bytes("");
+            } else {
+                returnDatas[i] = returnData;
+            }
+        }
+        bytes memory data = abi.encode(block.number, returnDatas);
+        assembly {
+            return(add(data, 32), data)
+        }
+    }
 }
 
 // BLOCK DATA
