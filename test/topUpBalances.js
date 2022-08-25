@@ -10,6 +10,7 @@ const signer = new ethers.Wallet(PRIVATE_KEY);
 const minter = ethers.utils.getAddress("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"); // hardhat address[0]
 const wallet = ethers.utils.getAddress("0x70997970c51812dc3a010c7d01b50e0d17dc79c8"); // hardhat address[1]
 
+// LOAD IMPERSONATED WALLETS
 const impersonateDAI = ethers.utils.getAddress("0x28c6c06298d514db089934071355e5743bf21d60"); // x
 const impersonateUSDC = ethers.utils.getAddress("0x0a59649758aa4d66e25f08dd01271e891fe52199"); // x
 const impersonateUSDT = ethers.utils.getAddress("0xf977814e90da44bfa03b6295a0616a897441acec"); // x
@@ -21,6 +22,7 @@ const impersonateUNI = ethers.utils.getAddress("0x1a9c8182c09f50c8318d769245bea5
 const impersonateCOMP = ethers.utils.getAddress("0x28c6c06298d514db089934071355e5743bf21d60"); // x
 const impersonateMATIC = ethers.utils.getAddress("0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0"); // x
 
+// TOKEN ADDRESSESS
 const DAI = ethers.utils.getAddress("0x6b175474e89094c44da98b954eedeac495271d0f");
 const USDC = ethers.utils.getAddress("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48");
 const USDT = ethers.utils.getAddress("0xdac17f958d2ee523a2206206994597c13d831ec7");
@@ -32,34 +34,30 @@ const UNI = ethers.utils.getAddress("0x1f9840a85d5af5bf1d1762f925bdaddc4201f984"
 const COMP = ethers.utils.getAddress("0xc00e94cb662c3520282e6f5717214004a7f26888");
 const MATIC = ethers.utils.getAddress("0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0");
 
-describe("Mainnet Fork - Balances Fake Top-up", function () {
+describe("Mainnet Fork - Balances Top-up", function () {
   before(async () => {
     const provider = new ethers.providers.JsonRpcProvider("http://localhost:8545");
     const block = await hre.ethers.provider.getBlock("latest");
     this.openingTime = Math.floor(block.timestamp) + 3600 // now + 1 hour
     this.closingTime = this.openingTime + 864000; // 864000 == 10 days
 
-    const contractDAI = await ethers.getContractFactory("ERC20Mock");
-    const contractUSDC = await ethers.getContractFactory("ERC20Mock");
-    const contractUSDT = await ethers.getContractFactory("ERC20Mock");
-    const contractTUSD = await ethers.getContractFactory("ERC20Mock");
-    const contractWETH = await ethers.getContractFactory("ERC20Mock");
-    const contractWBTC = await ethers.getContractFactory("ERC20Mock");
-    const contractLINK = await ethers.getContractFactory("ERC20Mock");
-    const contractUNI = await ethers.getContractFactory("ERC20Mock");
-    const contractCOMP = await ethers.getContractFactory("ERC20Mock");
-    const contractMATIC = await ethers.getContractFactory("ERC20Mock");
+    const mockToken = await ethers.getContractFactory("ERC20Mock");
+    this.contractDAI = await mockToken.attach(DAI);
+    this.contractUSDC = await mockToken.attach(USDC);
+    this.contractUSDT = await mockToken.attach(USDT);
+    this.contractTUSD = await mockToken.attach(TUSD);
+    this.contractWETH = await mockToken.attach(WETH);
+    this.contractWBTC = await mockToken.attach(WBTC);
+    this.contractLINK = await mockToken.attach(LINK);
+    this.contractUNI = await mockToken.attach(UNI);
+    this.contractCOMP = await mockToken.attach(COMP);
+    this.contractMATIC = await mockToken.attach(MATIC);
 
-    this.contractDAI = await contractDAI.attach(DAI);
-    this.contractUSDC = await contractUSDC.attach(USDC);
-    this.contractUSDT = await contractUSDT.attach(USDT);
-    this.contractTUSD = await contractTUSD.attach(TUSD);
-    this.contractWETH = await contractWETH.attach(WETH);
-    this.contractWBTC = await contractWBTC.attach(WBTC);
-    this.contractLINK = await contractLINK.attach(LINK);
-    this.contractUNI = await contractUNI.attach(UNI);
-    this.contractCOMP = await contractCOMP.attach(COMP);
-    this.contractMATIC = await contractMATIC.attach(MATIC);
+    const signerImpersonated = await impersonateAccount(provider, signer.address, "0x4563918244F40000000");
+    console.log('signerImpersonated', signerImpersonated);
+
+    const walletImpersonated = await impersonateAccount(provider, wallet, "0x4563918244F40000000");
+    console.log('signerImpersonated', signerImpersonated);
 
     // WALLET
     await provider.send("hardhat_impersonateAccount", [wallet]);

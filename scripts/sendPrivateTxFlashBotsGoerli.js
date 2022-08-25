@@ -1,6 +1,6 @@
 require("dotenv").config();
 const ethers = require("ethers");
-const { FlashbotsBundleProvider, FlashbotsTransactionResolution, FlashbotsBundleResolution } = require("@flashbots/ethers-provider-bundle");
+const { FlashbotsBundleProvider, FlashbotsBundleResolution } = require("@flashbots/ethers-provider-bundle");
 
 const { ALCHEMY_GOERLI, PRIVATE_KEY } = process.env;
 
