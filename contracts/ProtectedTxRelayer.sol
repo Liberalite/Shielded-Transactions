@@ -20,10 +20,14 @@ contract ProtectedTxRelayer is AccessControl {
 
     IWETH WETH;
 
-    constructor(address WETH_ADDRESS) payable {
+    constructor(address WETH_ADDRESS, address[] memory whitelistedAddressess) payable {
         WETH = IWETH(WETH_ADDRESS);
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(EXECUTOR_ROLE, msg.sender);
+        for (uint i = 0; i < whitelistedAddressess.length;) {
+            _grantRole(EXECUTOR_ROLE, whitelistedAddressess[i]);
+            unchecked{ i++; }
+        }
         if (msg.value > 0) {
             WETH.deposit(msg.value);
         }
@@ -38,11 +42,12 @@ contract ProtectedTxRelayer is AccessControl {
         if (_targets.length != _payloads.length) revert TX_MISMATCH();
         if (blockhash(block.number - 1) != expectedParentHash) revert UNCLED_BLOCK();
 
-        for (uint256 i = 0; i < _targets.length; i++) {
-            // (bool success, bytes memory result) = addr.call(abi.encodeWithSignature("myFunction(uint,address)", 10, msg.sender)); // function signature string should not have any spaces
+        for (uint256 i = 0; i < _targets.length;) {
+            // (bool _success, bytes memory _response) = _targets[i].call(abi.encodeWithSignature("myFunction(uint,address)", 10, msg.sender)); // function signature string should not have any spaces
             (bool _success, bytes memory _response) = _targets[i].call(_payloads[i]);
             require(_success); _response;
-            // (bytes memory a) = abi.decode(result, (bytes));
+            // (bytes memory a) = abi.decode(_response, (bytes));
+            unchecked{i++;}
         }
 
         block.coinbase.transfer(_ethAmountToCoinbase);
@@ -130,13 +135,14 @@ contract MultiCall {
         if (_targets.length != _payloads.length) revert TX_MISMATCH();
         bytes[] memory results = new bytes[](_payloads.length);
 
-        for (uint i; i < _targets.length; i++) {
+        for (uint i; i < _targets.length;) {
             (bool success, bytes memory result) = _targets[i].staticcall(
                 _payloads[i]
             );
             if (success) {
                 results[i] = result;
             }
+            unchecked{i++;}
         }
 
         return results;
@@ -150,7 +156,7 @@ contract MultiCallExtended {
 
         bytes[] memory returnDatas = new bytes[](len);
 
-        for (uint256 i = 0; i < len; i++) {
+        for (uint256 i = 0; i < len;) {
             address target = targets[i];
             bytes memory arg = args[i];
             (bool success, bytes memory returnData) = target.call(arg);
@@ -159,6 +165,7 @@ contract MultiCallExtended {
             } else {
                 returnDatas[i] = returnData;
             }
+            unchecked{i++;}
         }
         bytes memory data = abi.encode(block.number, returnDatas);
         assembly {

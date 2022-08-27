@@ -12,15 +12,15 @@ const formatted = (bigNr) => ethers.utils.formatUnits(bigNr, "gwei");
     const signer = new ethers.Wallet(PRIVATE_KEY, provider);
     const flashbotsProvider = await FlashbotsBundleProvider.create(provider, signer, "https://relay-goerli.flashbots.net", "goerli");
 
-    // INCLUDE TRANSACTIONS IN MAXIMUM 2 BLOCKS
-    const BLOCKS_IN_THE_FUTURE = 2;
+    // INCLUDE TRANSACTIONS IN MAXIMUM 1 BLOCK
+    const BLOCKS_IN_THE_FUTURE = 1;
     const CHAIN_ID = await provider.getNetwork().chainId || 5;
 
     // GET EIP1155 CURRENT BLOCK FEE INFORMATION
     const feeData = await provider.getFeeData()
-    const MAX_FEE = feeData.maxFeePerGas;
-    const PRIORITY_FEE = feeData.maxPriorityFeePerGas;
-    const GAS_PRICE = feeData.gasPrice; // price in GWEI
+    const MAX_FEE = feeData.maxFeePerGas; // MAX_FEE that you are willing to pay in total
+    const PRIORITY_FEE = feeData.maxPriorityFeePerGas; // tip for miner deducted from MAX_FEE
+    const GAS_PRICE = feeData.gasPrice; // price in GWEI = 1 GWEI == 1 Billion (1.000.000.000 WEI)
     const nonce = await provider.getTransactionCount(signer.address)
 
     console.log('nonce', nonce)
@@ -29,7 +29,7 @@ const formatted = (bigNr) => ethers.utils.formatUnits(bigNr, "gwei");
     console.log('PRIORITY_FEE', formatted(PRIORITY_FEE))
     console.log('GAS_PRICE', formatted(GAS_PRICE))
 
-    // ADD 12% to current BASEFEE + PRIORITY_TIP
+    // (MAX_FEE + 12%) - (BASEFEE + PRIORITY_TIP)
     const percentage = 12;
     const percentageIncrease = MAX_FEE.add(MAX_FEE.mul(percentage).div(100))
     const percentageIncreaseReadable = formatted(MAX_FEE.add(MAX_FEE.mul(percentage).div(100)))
