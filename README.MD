@@ -14,7 +14,8 @@ Shielded Transactions - Alchemy and Flashbots
 - [x] add legacy transactions
 - [x] add EIP1159 transactions
 - [x] add simulated transactions
-- [] add bundled transactions
+- [x] add bundled transactions
+- [x] add signed transactions
 - [] add function gas estimation example
 - [] add function _signTypedData example
 - [] any urgent task needed ?
