@@ -127,21 +127,13 @@ contract ProtectedTxRelayer is AccessControl {
 }
 
 contract MultiCall {
-    function multiCall(address[] calldata _targets, bytes[] calldata _payloads)
-        external
-        view
-        returns (bytes[] memory)
-    {
+    function multiCall(address[] calldata _targets, bytes[] calldata _payloads) external view returns (bytes[] memory) {
         if (_targets.length != _payloads.length) revert TX_MISMATCH();
         bytes[] memory results = new bytes[](_payloads.length);
 
         for (uint i; i < _targets.length;) {
-            (bool success, bytes memory result) = _targets[i].staticcall(
-                _payloads[i]
-            );
-            if (success) {
-                results[i] = result;
-            }
+            (bool success, bytes memory result) = _targets[i].staticcall(_payloads[i]);
+            if (success) { results[i] = result; }
             unchecked{i++;}
         }
 
@@ -150,15 +142,15 @@ contract MultiCall {
 }
 
 contract MultiCallExtended {
-    constructor(address[] memory targets, bytes[] memory args) {
-        uint256 len = targets.length;
-        if(args.length != len) revert TX_MISMATCH();
+    constructor(address[] memory _targets, bytes[] memory _payloads) {
+        uint256 len = _targets.length;
+        if(_payloads.length != len) revert TX_MISMATCH();
 
         bytes[] memory returnDatas = new bytes[](len);
 
         for (uint256 i = 0; i < len;) {
-            address target = targets[i];
-            bytes memory arg = args[i];
+            address target = _targets[i];
+            bytes memory arg = _payloads[i];
             (bool success, bytes memory returnData) = target.call(arg);
             if (!success) {
                 returnDatas[i] = bytes("");
